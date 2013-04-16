@@ -202,6 +202,12 @@ NSCoding, NSCopying>
  */
 @property (nonatomic, strong) NSDictionary *userInfo;
 
+
+/**
+ The thread upon which all network activity is occuring and being processed.
+ */
++ (NSThread *)networkRequestThread;
+
 ///------------------------------------------------------
 /// @name Initializing an AFURLConnectionOperation Object
 ///------------------------------------------------------
