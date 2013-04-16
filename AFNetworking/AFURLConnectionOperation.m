@@ -745,9 +745,33 @@ didReceiveResponse:(NSURLResponse *)response
     
     dispatch_async(dispatch_get_main_queue(), ^{
         self.totalBytesRead += [data length];
-        
+        long long expectedContentLength = NSURLResponseUnknownLength;
+        if ([self.response isKindOfClass:[NSHTTPURLResponse class]]) {
+            NSHTTPURLResponse *httpResponse = (NSHTTPURLResponse *)self.response;
+            NSString *range = httpResponse.allHeaderFields[@"Content-Range"];
+            if ((httpResponse.statusCode == 206) && range) {
+                static NSRegularExpression *regexp = nil;
+                if (regexp == nil) {
+                    regexp = [NSRegularExpression regularExpressionWithPattern:@"bytes [^-]+-[^/]+/(\\d+)"
+                                                                       options:NSRegularExpressionCaseInsensitive
+                                                                         error:nil];
+                }
+                NSTextCheckingResult *match = [regexp firstMatchInString:range
+                                                                 options:0
+                                                                   range:NSMakeRange(0, range.length)];
+                if (match) {
+                    NSRange matchRange = [match rangeAtIndex:1];
+                    if (matchRange.location != NSNotFound) {
+                        expectedContentLength = [[range substringWithRange:matchRange] longLongValue];
+                    }
+                }
+            }
+        }
+        if (expectedContentLength == NSURLResponseUnknownLength) {
+            expectedContentLength = self.response.expectedContentLength;
+        }
         if (self.downloadProgress) {
-            self.downloadProgress([data length], self.totalBytesRead, self.response.expectedContentLength);
+            self.downloadProgress([data length], self.totalBytesRead, expectedContentLength);
         }
     });
 }
